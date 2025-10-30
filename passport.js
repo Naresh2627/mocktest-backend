@@ -7,7 +7,9 @@ passport.use(
     {
       clientID: process.env.GOOGLE_CLIENT_ID,
       clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-      callbackURL: "http://localhost:3000/oauth/google/callback"
+      callbackURL: process.env.NODE_ENV === 'production' 
+        ? `${process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || 'https://your-backend-app.onrender.com'}/oauth/google/callback`
+        : "http://localhost:3000/oauth/google/callback"
     },
     async (_accessToken, _refreshToken, profile, done) => {
       try {
