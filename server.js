@@ -19,29 +19,29 @@ app.use(helmet());
 app.use(
   cors({
     origin: process.env.NODE_ENV === 'production'
-      ? function(origin, callback) {
-          // Allow requests with no origin (mobile apps, curl, etc.)
-          if (!origin) return callback(null, true);
-          
-          const allowedOrigins = [
-            process.env.FRONTEND_URL,
-            process.env.FRONTEND_URL?.replace('https://', 'http://'),
-            'https://mocktest-frontend-mu.vercel.app',
-            'https://mocktest-frontend.vercel.app',
-          ].filter(Boolean);
-          
-          // Also allow any vercel.app domain for flexibility
-          const isVercelDomain = origin && origin.includes('.vercel.app');
-          
-          console.log('CORS check - Origin:', origin, 'Allowed:', allowedOrigins, 'IsVercel:', isVercelDomain);
-          
-          if (allowedOrigins.includes(origin) || isVercelDomain) {
-            callback(null, true);
-          } else {
-            console.log('CORS blocked origin:', origin);
-            callback(new Error('Not allowed by CORS'));
-          }
+      ? function (origin, callback) {
+        // Allow requests with no origin (mobile apps, curl, etc.)
+        if (!origin) return callback(null, true);
+
+        const allowedOrigins = [
+          process.env.FRONTEND_URL,
+          process.env.FRONTEND_URL?.replace('https://', 'http://'),
+          'https://mocktest-frontend-mu.vercel.app',
+          'https://mocktest-frontend.vercel.app',
+        ].filter(Boolean);
+
+        // Also allow any vercel.app domain for flexibility
+        const isVercelDomain = origin && origin.includes('.vercel.app');
+
+        console.log('CORS check - Origin:', origin, 'Allowed:', allowedOrigins, 'IsVercel:', isVercelDomain);
+
+        if (allowedOrigins.includes(origin) || isVercelDomain) {
+          callback(null, true);
+        } else {
+          console.log('CORS blocked origin:', origin);
+          callback(new Error('Not allowed by CORS'));
         }
+      }
       : ["http://localhost:3001", "http://localhost:3005", "http://localhost:3004", "http://localhost:3003", "http://localhost:3002", "http://localhost:5173"],
     credentials: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],

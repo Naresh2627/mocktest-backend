@@ -25,23 +25,60 @@ const updateNoteSchema = z.object({
   is_draft: z.boolean().optional()
 });
 
-// Get all notes for authenticated user
+// Get all notes for authenticated user with advanced filtering and sorting
 router.get("/", authenticationtoken, async (req, res) => {
   try {
-    const { page = 1, limit = 10, search, tag, draft_only } = req.query;
+    const { 
+      page = 1, 
+      limit = 20, 
+      search, 
+      tag, 
+      draft_only, 
+      sort_by = 'updated_at', 
+      sort_order = 'desc',
+      visibility,
+      label_id,
+      category_id,
+      date_from,
+      date_to,
+      infinite_scroll = false
+    } = req.query;
+    
     const offset = (page - 1) * limit;
+    const parsedLimit = Math.min(parseInt(limit), 100); // Cap at 100 for performance
 
     let query = supabase
       .from("notes")
       .select("id, title, content, encrypted_content, is_encrypted, is_draft, is_public, tags, created_at, updated_at, published_at, auto_saved_at")
-      .eq("user_id", req.user.id)
-      .order("updated_at", { ascending: false });
+      .eq("user_id", req.user.id);
+
+    // Enhanced Sorting with multiple fields
+    const validSortFields = ['created_at', 'updated_at', 'title', 'published_at', 'auto_saved_at'];
+    const sortField = validSortFields.includes(sort_by) ? sort_by : 'updated_at';
+    const ascending = sort_order === 'asc';
+    
+    // Primary sort
+    query = query.order(sortField, { ascending });
+    
+    // Secondary sort for consistency (always by id for stable pagination)
+    if (sortField !== 'id') {
+      query = query.order('id', { ascending: false });
+    }
 
     // Filter by draft status
     if (draft_only === 'true') {
       query = query.eq("is_draft", true);
     } else if (draft_only === 'false') {
       query = query.eq("is_draft", false);
+    }
+
+    // Filter by visibility
+    if (visibility === 'public') {
+      query = query.eq("is_public", true);
+    } else if (visibility === 'private') {
+      query = query.eq("is_public", false);
+    } else if (visibility === 'encrypted') {
+      query = query.eq("is_encrypted", true);
     }
 
     // Search functionality
@@ -54,10 +91,57 @@ router.get("/", authenticationtoken, async (req, res) => {
       query = query.contains("tags", [tag]);
     }
 
-    // Pagination
-    query = query.range(offset, offset + limit - 1);
+    // Date range filtering
+    if (date_from) {
+      query = query.gte('created_at', date_from);
+    }
+    if (date_to) {
+      query = query.lte('created_at', date_to);
+    }
 
-    const { data: notes, error } = await query;
+    // Label and category filtering (requires joins)
+    if (label_id) {
+      // This would require a more complex query with joins
+      // For now, we'll handle this in the notes-with-labels endpoint
+    }
+    if (category_id) {
+      // This would require a more complex query with joins
+      // For now, we'll handle this in the notes-with-labels endpoint
+    }
+
+    // Get total count for pagination
+    const countQuery = supabase
+      .from("notes")
+      .select("id", { count: 'exact', head: true })
+      .eq("user_id", req.user.id);
+
+    // Apply same filters to count query
+    if (draft_only === 'true') {
+      countQuery.eq("is_draft", true);
+    } else if (draft_only === 'false') {
+      countQuery.eq("is_draft", false);
+    }
+    if (visibility === 'public') {
+      countQuery.eq("is_public", true);
+    } else if (visibility === 'private') {
+      countQuery.eq("is_public", false);
+    } else if (visibility === 'encrypted') {
+      countQuery.eq("is_encrypted", true);
+    }
+    if (search) {
+      countQuery.or(`title.ilike.%${search}%, content.ilike.%${search}%`);
+    }
+    if (tag) {
+      countQuery.contains("tags", [tag]);
+    }
+
+    // Pagination with performance optimization
+    query = query.range(offset, offset + parsedLimit - 1);
+
+    const [{ data: notes, error }, { count }] = await Promise.all([
+      query,
+      countQuery
+    ]);
 
     if (error) {
       return res.status(400).json({ error: error.message });
@@ -77,14 +161,31 @@ router.get("/", authenticationtoken, async (req, res) => {
       return note;
     });
 
-    res.json({
+    // Enhanced response with performance metrics
+    const response = {
       notes: processedNotes,
       pagination: {
         page: parseInt(page),
-        limit: parseInt(limit),
-        total: notes.length
+        limit: parsedLimit,
+        total: count || 0,
+        totalPages: Math.ceil((count || 0) / parsedLimit),
+        hasNext: (page * parsedLimit) < (count || 0),
+        hasPrev: page > 1,
+        isInfiniteScroll: infinite_scroll === 'true'
+      },
+      meta: {
+        query_time: Date.now(),
+        filters_applied: {
+          search: !!search,
+          tag: !!tag,
+          draft_only: draft_only !== undefined,
+          visibility: !!visibility,
+          date_range: !!(date_from || date_to)
+        }
       }
-    });
+    };
+
+    res.json(response);
   } catch (err) {
     console.error("Get notes error:", err);
     res.status(500).json({ error: "Internal server error" });
@@ -413,20 +514,6 @@ router.get("/stats/overview", authenticationtoken, async (req, res) => {
     res.json({ stats: overview });
   } catch (err) {
     console.error("Get stats error:", err);
-    res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// Test route to check if notes API is working
-router.get("/test", authenticationtoken, async (req, res) => {
-  try {
-    res.json({ 
-      message: "Notes API is working!", 
-      user: req.user,
-      timestamp: new Date().toISOString()
-    });
-  } catch (err) {
-    console.error("Test route error:", err);
     res.status(500).json({ error: "Internal server error" });
   }
 });
