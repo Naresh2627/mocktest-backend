@@ -26,11 +26,16 @@ app.use(
           const allowedOrigins = [
             process.env.FRONTEND_URL,
             process.env.FRONTEND_URL?.replace('https://', 'http://'),
+            'https://mocktest-frontend-mu.vercel.app',
+            'https://mocktest-frontend.vercel.app',
           ].filter(Boolean);
           
-          console.log('CORS check - Origin:', origin, 'Allowed:', allowedOrigins);
+          // Also allow any vercel.app domain for flexibility
+          const isVercelDomain = origin && origin.includes('.vercel.app');
           
-          if (allowedOrigins.includes(origin)) {
+          console.log('CORS check - Origin:', origin, 'Allowed:', allowedOrigins, 'IsVercel:', isVercelDomain);
+          
+          if (allowedOrigins.includes(origin) || isVercelDomain) {
             callback(null, true);
           } else {
             console.log('CORS blocked origin:', origin);
