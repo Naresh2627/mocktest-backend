@@ -83,6 +83,8 @@ app.get("/login", (req, res) => {
 app.get("/", (req, res) => {
   res.json({
     message: "Authentication API is running",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV,
     endpoints: {
       signup: "POST /oauth/signup",
       login: "POST /oauth/login",
@@ -91,6 +93,15 @@ app.get("/", (req, res) => {
       profile: "GET /oauth/profile (requires auth)",
       testGoogle: "GET /oauth/test-google"
     }
+  });
+});
+
+// Simple test route
+app.get("/test", (req, res) => {
+  res.json({
+    message: "Test route working",
+    timestamp: new Date().toISOString(),
+    environment: process.env.NODE_ENV
   });
 });
 
