@@ -43,33 +43,45 @@ router.get("/google", (req, res, next) => {
 });
 
 router.get("/google/callback", (req, res, next) => {
-  console.log("Google OAuth callback received");
+  console.log("=== Google OAuth callback received ===");
   console.log("Query params:", req.query);
+  console.log("Environment:", process.env.NODE_ENV);
+  console.log("Frontend URL:", process.env.FRONTEND_URL);
   
   passport.authenticate("google", (err, user, info) => {
-    console.log("Passport authenticate result:", { err, user, info });
+    console.log("=== Passport authenticate result ===");
+    console.log("Error:", err);
+    console.log("User:", user ? { id: user.id, email: user.email } : null);
+    console.log("Info:", info);
     
     if (err) {
       console.error("Google OAuth error:", err);
-      return res.json({ error: "OAuth error", details: err.message });
+      const errorUrl = `${process.env.FRONTEND_URL}/login?error=oauth_error&message=${encodeURIComponent(err.message)}`;
+      return res.redirect(errorUrl);
     }
     
     if (!user) {
       console.error("Google OAuth failed - no user:", info);
-      return res.json({ error: "Authentication failed", details: info });
+      const errorUrl = `${process.env.FRONTEND_URL}/login?error=auth_failed&message=${encodeURIComponent('Authentication failed')}`;
+      return res.redirect(errorUrl);
     }
 
-    console.log("User authenticated successfully:", user);
+    console.log("User authenticated successfully:", { id: user.id, email: user.email });
 
     // Generate token and return success response
     try {
       const token = generateJWTToken({ id: user.id, email: user.email });
+      console.log("Token generated successfully");
+      
+      const redirectUrl = `${process.env.FRONTEND_URL}/auth/callback?token=${token}`;
+      console.log("Redirecting to:", redirectUrl);
       
       // Redirect to frontend with token
-      res.redirect(`${process.env.FRONTEND_URL}/auth/callback?token=${token}`);
+      res.redirect(redirectUrl);
     } catch (error) {
       console.error("Token generation error:", error);
-      res.json({ error: "Token generation failed", details: error.message });
+      const errorUrl = `${process.env.FRONTEND_URL}/login?error=token_error&message=${encodeURIComponent('Token generation failed')}`;
+      return res.redirect(errorUrl);
     }
   })(req, res, next);
 });

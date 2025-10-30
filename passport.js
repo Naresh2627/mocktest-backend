@@ -13,11 +13,15 @@ passport.use(
     },
     async (_accessToken, _refreshToken, profile, done) => {
       try {
-        console.log("Google OAuth Profile received:", {
-          id: profile.id,
-          displayName: profile.displayName,
-          emails: profile.emails
-        });
+        console.log("=== Google OAuth Profile received ===");
+        console.log("Profile ID:", profile.id);
+        console.log("Display Name:", profile.displayName);
+        console.log("Emails:", profile.emails);
+        
+        if (!profile.emails || profile.emails.length === 0) {
+          console.error("No email found in Google profile");
+          return done(new Error("No email found in Google profile"), null);
+        }
         
         const email = profile.emails[0].value;
         const name = profile.displayName;
