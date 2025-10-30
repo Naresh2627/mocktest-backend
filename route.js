@@ -380,7 +380,7 @@ router.get("/profile", authenticationtoken, async (req, res) => {
 // Test route to check Google OAuth configuration
 router.get("/test-google", (req, res) => {
   const callbackURL = process.env.NODE_ENV === 'production' 
-    ? `${process.env.BACKEND_URL || process.env.RENDER_EXTERNAL_URL || 'https://your-backend-app.onrender.com'}/oauth/google/callback`
+    ? `${process.env.RENDER_EXTERNAL_URL || process.env.BACKEND_URL || 'https://your-backend-app.onrender.com'}/oauth/google/callback`
     : "http://localhost:3000/oauth/google/callback";
     
   res.json({
