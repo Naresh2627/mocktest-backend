@@ -63,6 +63,12 @@ app.use(
 app.use(passport.initialize());
 app.use(passport.session());
 
+// Debug middleware to log all requests
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  next();
+});
+
 // Routes
 app.use("/oauth", router);
 app.use("/api/notes", notesRouter);
@@ -81,9 +87,28 @@ app.get("/", (req, res) => {
       signup: "POST /oauth/signup",
       login: "POST /oauth/login",
       googleAuth: "GET /oauth/google",
+      googleCallback: "GET /oauth/google/callback",
       profile: "GET /oauth/profile (requires auth)",
       testGoogle: "GET /oauth/test-google"
     }
+  });
+});
+
+// Catch-all route for debugging
+app.use("*", (req, res) => {
+  console.log(`Route not found: ${req.method} ${req.originalUrl}`);
+  res.status(404).json({
+    success: false,
+    message: "Route not found",
+    path: req.originalUrl,
+    method: req.method,
+    availableRoutes: [
+      "GET /oauth/google",
+      "GET /oauth/google/callback",
+      "POST /oauth/login",
+      "POST /oauth/signup",
+      "GET /oauth/profile"
+    ]
   });
 });
 
